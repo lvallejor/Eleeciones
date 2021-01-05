@@ -48,22 +48,58 @@ const eliminarCandidato = async (dato) => {
   }
 };
 
-const editar = async (name, img, id) => {
+const editar = async (id, nombre, foto) => {
   const consulta = {
-    text:
-      "UPDATE candidatos SET nombre = $1, foto = $2 WHERE id = $3 RETURNING *",
-    values: name,
-    img,
-    id,
+    text: "UPDATE candidatos SET nombre = $2, foto = $3 WHERE id = $1",
+    values: [id, nombre, foto],
   };
-
   try {
     const result = await pool.query(consulta);
     return result;
-  } catch (error) {
-    console.log(error);
-    return error;
+  } catch (e) {
+    console.log(e);
   }
 };
 
-module.exports = { agregarCandidato, consultar, eliminarCandidato, editar };
+const votoSeguro = async (estado, votos, ganador) => {
+  const insertVote = {
+    text: "INSERT INTO historial (estado, votos, ganador) VALUES ($1, $2, $3)",
+    values: [estado, votos, ganador],
+  };
+  const updateVote = {
+    text: "UPDATE candidatos SET votos = votos + $1 WHERE nombre = $2",
+    values: [votos, ganador],
+  };
+  try {
+    await pool.query("BEGIN");
+    await pool.query(insertVote);
+    await pool.query(updateVote);
+    await pool.query("COMMIT");
+    return true;
+  } catch (e) {
+    await pool.query("ROLLBACK");
+    return false;
+  }
+};
+
+const historialDeVotoSeguro = async () => {
+  try {
+    const consulta = {
+      text: "SELECT * FROM historial",
+      rowMode: "array",
+    };
+    const result = await pool.query(consulta);
+    return result.rows;
+  } catch (e) {
+    console.log(e.code);
+    return e;
+  }
+};
+module.exports = {
+  agregarCandidato,
+  consultar,
+  eliminarCandidato,
+  editar,
+  votoSeguro,
+  historialDeVotoSeguro,
+};

@@ -7,6 +7,8 @@ const {
   consultar,
   eliminarCandidato,
   editar,
+  votoSeguro,
+  historialDeVotoSeguro,
 } = require("./consultas");
 
 http
@@ -40,16 +42,38 @@ http
       res.end(JSON.stringify(registros));
     }
 
-    if (req.url == "/candidatos" && req.method == "PUT") {
+    if (req.url.startsWith("/candidato") && req.method == "PUT") {
       let body = "";
-      req.on("data", (chunk) => {
-        body += chunk;
+      req.on("data", (datos) => {
+        body += datos;
       });
       req.on("end", async () => {
-        const { name, img, id } = JSON.parse(body);
-        const respuesta = await editar(name, img, id);
+        const { id, name, img } = JSON.parse(body);
+        const respuesta = await editar(id, name, img);
         res.end(JSON.stringify(respuesta));
       });
+    }
+
+    if (req.url == "/votos" && req.method == "POST") {
+      let body = "";
+      req.on("data", (datos) => {
+        body += datos;
+      });
+      req.on("end", async () => {
+        const { estado, votos, ganador } = JSON.parse(body);
+        const result = await votoSeguro(estado, votos, ganador);
+        if (result) {
+          res.end(JSON.stringify({}));
+        } else {
+          res.statusCode = 500;
+          res.end();
+        }
+      });
+    }
+
+    if (req.url == "/historial" && req.method == "GET") {
+      const registros = await historialDeVotoSeguro();
+      res.end(JSON.stringify(registros));
     }
   })
   .listen(3000, () => console.log("servidor en puerto 3000"));
